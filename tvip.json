@@ -1,0 +1,58 @@
+[
+  {
+    "CANAL": "4KURD",
+    "GRUPO": "ORIENTE",
+    "LOGO": "",
+    "ID": "",
+    "URL": "http://51.210.199.23/hls/stream.m3u8"
+  },
+  {
+    "CANAL": "504 TV",
+    "GRUPO": "ENTRETENIMIENTO",
+    "LOGO": "https://i.imgur.com/c2HLI3k.png",
+    "ID": "504TV.hn",
+    "URL": "https://mediacp.us:8081/504tvhn/index.m3u8"
+  },
+  {
+    "CANAL": "5DIAS TV",
+    "GRUPO": "GENERAL",
+    "LOGO": "https://i.imgur.com/AX25tmv.png",
+    "ID": "5DiasTV.py",
+    "URL": "https://ythls.armelin.one/channel/UCiyJDRTHlTOGn6Fc5_BxcJw.m3u8"
+  },
+  {
+    "CANAL": "A&R CANAL",
+    "GRUPO": "RELIGIOUS",
+    "LOGO": "https://i.imgur.com/ejRJqSI.png",
+    "ID": "ARCanal.pa",
+    "URL": "http://51.222.9.192:3589/stream/play.m3u8"
+  },
+  {
+    "CANAL": "ABC-TV PARAGUAY",
+    "GRUPO": "GENERAL",
+    "LOGO": "https://i.imgur.com/OqfBMGy.png",
+    "ID": "ABCTVParaguay.py",
+    "URL": "https://d2e809bgs49c6y.cloudfront.net/live/d87c2b7b-9ecf-4e6e-b63b-b32772bd7851/live.isml/d87c2b7b-9ecf-4e6e-b63b-b32772bd7851.m3u8"
+  },
+  {
+    "CANAL": "ABYA YALA TV",
+    "GRUPO": "GENERAL",
+    "LOGO": "https://comteco.com.bo/img/upload/canales/abya-yala.png",
+    "ID": "AbyaYalaTV.bo",
+    "URL": "https://master.tucableip.com/abyayalatv/playlist.m3u8"
+  },
+  {
+    "CANAL": "ACS NETWORK",
+    "GRUPO": "ENTRETENIMIENTO",
+    "LOGO": "https://i.imgur.com/7aIab2r.png",
+    "ID": "ACSNetwork.pr",
+    "URL": "https://5790d294af2dc.streamlock.net/acsnetwork/acsnetwork/playlist.m3u8"
+  },
+  {
+    "CANAL": "ACTIVA TV",
+    "GRUPO": "GENERAL",
+    "LOGO": "https://i.imgur.com/S69lDu4.png",
+    "ID": "ActivaTV.hn",
+    "URL": "https://videoserver.tmcreativos.com:19360/mbcrtzxnxd/mbcrtzxnxd.m3u8"
+  }
+]
