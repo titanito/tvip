@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Player Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Estilos CSS personalizados */
+        .channel-item {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .channel-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        #videoPlayer {
+            background-color: #000;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .source-tab {
+            transition: all 0.3s ease;
+        }
+        .source-tab.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: #4f46e5;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transform: translateX(200%);
+            transition: transform 0.3s ease-out;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+        }
+        .toast.show {
+            transform: translateX(0);
+        }
+        .toast.error {
+            background: #ef4444;
+        }
+        .toast.warning {
+            background: #f59e0b;
+        }
+        .toast.success {
+            background: #10b981;
+        }
+        .toast i {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+        .channel-grid-mini {
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        }
+        .channel-grid-small {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        }
+        .channel-grid-medium {
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        }
+        .channel-grid-large {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        }
+        .info-card {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border-radius: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+        .info-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .info-label {
+            color: #94a3b8;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .info-value {
+            color: #e2e8f0;
+            font-weight: 600;
+        }
+        .progress-bar {
+            height: 4px;
+            background: #334155;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #3b82f6;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #1e293b;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 0.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .dropdown-content a {
+            color: #e2e8f0;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            transition: background-color 0.3s;
+        }
+        .dropdown-content a:hover {
+            background-color: #334155;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        .dropdown-btn {
+            width: 100%;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.375rem;
+            color: #e2e8f0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .dropdown-btn:hover {
+            background-color: #334155;
+        }
+        .dropdown-btn:after {
+            content: "▼";
+            font-size: 0.6rem;
+            margin-left: 10px;
+        }
+        .channel-list-container {
+            max-height: calc(100vh - 400px);
+            overflow-y: auto;
+        }
+        @media (max-width: 768px) {
+            .flex-col-reverse-mobile {
+                flex-direction: column-reverse;
+            }
+            .channel-list-container {
+                max-height: 50vh;
+            }
+            .player-container, .channels-container {
+                width: 100% !important;
+            }
+        }
+        .copy-btn {
+            transition: all 0.3s ease;
+        }
+        .copy-btn:hover {
+            transform: scale(1.05);
+            background-color: #3b82f6;
+        }
+        .copy-btn.copied {
+            background-color: #10b981;
+        }
+        .file-selector-btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: #3b82f6;
+            color: white;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            text-align: center;
+        }
+        .file-selector-btn:hover {
+            background-color: #2563eb;
+        }
+        .json-btn {
+            background-color: #10b981;
+        }
+        .json-btn:hover {
+            background-color: #059669;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">IPTV Player Premium 1.3</h1>
+        
+        <!-- Pestañas de selección de fuente -->
+        <div class="flex mb-6 bg-gray-800 rounded-lg p-1 overflow-x-auto">
+            <button id="localTab" class="source-tab active flex-1 py-2 px-4 rounded-lg font-medium whitespace-nowrap">
+                <i class="fas fa-file-upload mr-2"></i>Cargar lista local
+            </button>
+            <button id="csvTab" class="source-tab flex-1 py-2 px-4 rounded-lg font-medium whitespace-nowrap">
+                <i class="fas fa-file-csv mr-2"></i>Cargar CSV
+            </button>
+            <button id="sampleTab" class="source-tab flex-1 py-2 px-4 rounded-lg font-medium whitespace-nowrap">
+                <i class="fas fa-tv mr-2"></i>Lista de ejemplo
+            </button>
+            <button id="jsonTab" class="source-tab flex-1 py-2 px-4 rounded-lg font-medium whitespace-nowrap json-btn">
+                <i class="fas fa-list mr-2"></i>Lista General
+            </button>
+            <button id="urlTab" class="source-tab flex-1 py-2 px-4 rounded-lg font-medium whitespace-nowrap">
+                <i class="fas fa-link mr-2"></i>Cargar desde URL
+            </button>
+        </div>
+        
+        <!-- Carga de archivo local -->
+        <div id="localSource" class="mb-6 p-4 bg-gray-800 rounded-lg">
+            <div class="flex flex-col md:flex-row items-center gap-3">
+                <label class="file-selector-btn">
+                    <i class="fas fa-folder-open mr-2"></i>Seleccionar archivo M3U
+                    <input type="file" id="m3uFile" accept=".m3u,.m3u8" class="hidden">
+                </label>
+                <span id="fileName" class="text-gray-400 flex-1">No se ha seleccionado ningún archivo</span>
+            </div>
+            <div id="fileError" class="text-red-500 mt-2 hidden"></div>
+        </div>
+        
+        <!-- Carga desde URL -->
+        <div id="urlSource" class="mb-6 p-4 bg-gray-800 rounded-lg hidden">
+            <div class="flex flex-col md:flex-row gap-3">
+                <input type="text" id="m3uUrl" placeholder="https://ejemplo.com/lista.m3u" class="flex-1 p-2 rounded bg-gray-700 text-white" value="http://yoxuqyyi.lucusvirtual.es/ls/mx.m3u">
+                <button id="loadUrlBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded whitespace-nowrap">
+                    <i class="fas fa-download mr-2"></i>Cargar
+                </button>
+            </div>
+            <div id="urlError" class="text-red-500 mt-2 hidden"></div>
+        </div>
+        
+        <!-- Carga desde CSV -->
+        <div id="csvSource" class="mb-6 p-4 bg-gray-800 rounded-lg hidden">
+            <div class="flex flex-col md:flex-row items-center gap-3">
+                <label class="file-selector-btn">
+                    <i class="fas fa-file-csv mr-2"></i>Seleccionar archivo CSV
+                    <input type="file" id="csvFile" accept=".csv" class="hidden">
+                </label>
+                <span id="csvFileName" class="text-gray-400 flex-1">No se ha seleccionado ningún archivo</span>
+            </div>
+            <div class="mt-3 text-sm text-gray-400">
+                <p>El archivo CSV debe tener la estructura: CANAL,LOGO,GRUPO,ID,URL</p>
+                <!--   <p>Donde FUENTE es la URL del canal a reproducir</p> -->
+            </div>
+            <div id="csvError" class="text-red-500 mt-2 hidden"></div>
+        </div>
+        
+        <div class="flex flex-col lg:flex-row flex-col-reverse-mobile gap-8">
+            <!-- Columna izquierda - Reproductor -->
+            <div class="w-full lg:w-1/2 player-container">
+                <div class="bg-gray-800 rounded-lg p-4 h-full">
+                    <div id="videoPlayer" class="w-full aspect-video rounded-lg mb-4 flex items-center justify-center">
+                        <div id="playerPlaceholder" class="text-center p-4">
+                            <i class="fas fa-tv text-4xl mb-2 text-gray-500"></i>
+                            <p class="text-gray-400">Selecciona un canal para comenzar</p>
+                        </div>
+                        <video id="videoElement" controls class="w-full h-full hidden"></video>
+                    </div>
+                    
+                    <div id="nowPlaying" class="hidden">
+                        <div class="flex items-center mb-2">
+                            <img id="nowPlayingLogo" src="" alt="Logo" class="w-12 h-12 rounded mr-3">
+                            <div>
+                                <h2 id="nowPlayingName" class="font-bold text-lg"></h2>
+                                <p id="nowPlayingGroup" class="text-gray-400 text-sm"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex space-x-2">
+                                <button id="playPauseBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <button id="stopBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-1 rounded">
+                                    <i class="fas fa-stop"></i>
+                                </button>
+                                <button id="fullscreenBtn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-1 rounded">
+                                    <i class="fas fa-expand"></i>
+                                </button>
+                                <button id="volumeBtn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-1 rounded">
+                                    <i class="fas fa-volume-up"></i>
+                                </button>
+                                <input id="volumeControl" type="range" min="0" max="1" step="0.1" value="1" class="w-20">
+                            </div>
+                            <div id="loadingIndicator" class="hidden">
+                                <span class="loading-spinner"></span>
+                                <span class="ml-2">Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Información del stream - Versión mejorada -->
+                    <div id="streamInfo" class="mt-4 hidden">
+                        <h3 class="font-bold mb-3 text-lg flex items-center">
+                            <i class="fas fa-info-circle mr-2 text-blue-400"></i>
+                            Información del stream
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Tarjeta de información básica -->
+                            <div class="info-card p-4">
+                                <div class="grid grid-cols-2 gap-4 mb-3">
+                                    <div>
+                                        <div class="info-label">Formato</div>
+                                        <div id="streamFormat" class="info-value">-</div>
+                                    </div>
+                                    <div>
+                                        <div class="info-label">Protocolo</div>
+                                        <div id="streamProtocol" class="info-value">-</div>
+                                    </div>
+                                    <div>
+                                        <div class="info-label">Estado</div>
+                                        <div id="streamStatus" class="info-value">-</div>
+                                    </div>
+                                    <div>
+                                        <div class="info-label">Resolución</div>
+                                        <div id="streamResolution" class="info-value">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Tarjeta de tiempo de reproducción -->
+                            <div class="info-card p-4">
+                                <div class="mb-2">
+                                    <div class="info-label">Tiempo de reproducción</div>
+                                    <div id="streamDuration" class="info-value">00:00:00</div>
+                                </div>
+                                <div class="progress-bar">
+                                    <div id="progressFill" class="progress-fill"></div>
+                                </div>
+                                <div class="flex justify-between text-xs text-gray-400 mt-1">
+                                    <span id="currentTime">00:00:00</span>
+                                    <span id="totalTime">00:00:00</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- URL del canal con botón de copiar -->
+                        <div class="info-card p-4 mt-4 relative">
+                            <div class="info-label">URL del canal</div>
+                            <div id="streamUrl" class="info-value truncate pr-10">-</div>
+                            <button id="copyUrlBtn" class="copy-btn absolute right-4 top-8 bg-gray-600 hover:bg-gray-700 text-white p-2 rounded">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Columna derecha - Canales -->
+            <div class="w-full lg:w-1/2 channels-container">
+                <!-- Controles superiores -->
+                <div class="flex flex-col md:flex-row gap-4 mb-4">
+                    <!-- Selector de categorías -->
+                    <div class="w-full md:w-1/2">
+                        <div class="dropdown">
+                            <button class="dropdown-btn">
+                                <span id="currentCategoryText">Seleccionar categoría</span>
+                            </button>
+                            <div id="categoryDropdown" class="dropdown-content">
+                                <!-- Las categorías se cargarán aquí dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Selector de tamaño -->
+                    <div class="w-full md:w-1/2">
+                        <select id="iconSizeSelector" class="w-full bg-gray-700 text-white p-2 rounded">
+                            <option value="mini">Mini</option>
+                            <option value="small">Pequeño</option>
+                            <option value="medium" selected>Mediano</option>
+                            <option value="large">Grande</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Buscador y lista de canales -->
+                <div class="bg-gray-800 rounded-lg p-4 h-full">
+                    <div class="mb-4 flex items-center">
+                        <input type="text" id="searchInput" placeholder="Buscar canales..." class="flex-1 p-2 rounded bg-gray-700 text-white">
+                        <button id="clearSearchBtn" class="ml-2 p-2 text-gray-400 hover:text-white">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="channelCount" class="text-sm text-gray-400 mb-3">0 canales cargados</div>
+                    
+                    <div id="channelList" class="channel-list-container space-y-2 overflow-y-auto">
+                        <div class="text-center text-gray-500 py-10">
+                            <i class="fas fa-tv text-4xl mb-2"></i>
+                            <p>Selecciona una categoría</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor de notificaciones toast -->
+    <div id="toastContainer"></div>
+
+    <script>
+        // Esperar a que el DOM esté completamente cargado
+        document.addEventListener('DOMContentLoaded', function() {
+            // Datos de ejemplo de lista M3U
+            const sampleM3U = `#EXTM3U
+#EXTINF:-1 tvg-name="MY TIME ESPAÑA" group-title="ESPAÑA" tvg-logo="https://i.imgur.com/pw4NZK1.png",MY TIME ESPAÑA 
+https://appletree-mytimespain-rakuten.amagi.tv/playlist.m3u8
+#EXTINF:-1 tvg-name="MY TIME MEXICO" group-title="MEXICO" tvg-logo="https://ml.globenewswire.com/Resource/Download/99b1354d-8a98-478f-acb1-217f619405b4?size=2",MY TIME MEXICO 
+https://appletree-mytime-samsungmexico.amagi.tv/playlist.m3u8
+#EXTINF:-1 tvg-name="504 TV" group-title="ENTRETENIMIENTO" tvg-logo="https://i.imgur.com/c2HLI3k.png",504 TV 
+https://mediacp.us:8081/504tvhn/index.m3u8
+#EXTINF:-1 tvg-logo="https://i.imgur.com/FizKu1X.png" group-title="CULTURAL" ,Atresplayer Inquietos 
+https://fast-channels.atresmedia.com/648ef3162bfab0e4587e0d61/648ef3162bfab0e4587e0d61.m3u8
+#EXTINF:-1 tvg-id="CGTNSpanish.cn" tvg-name="CGTN ESPAÑOL" group-title="CULTURAL" tvg-logo="https://i.imgur.com/Poz3xfi.png",CGTN ESPAÑOL 
+https://espanol-livews.cgtn.com/hls/LSveOGBaBw41Ea7ukkVAUdKQ220802LSTexu6xAuFH8VZNBLE1ZNEa220802cd/playlist.m3u8
+#EXTINF:-1 tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Logo_TVE-24h.svg/1200px-Logo_TVE-24h.svg.png" group-title="NOTICIAS", 24h NOTICIAS TVE 
+https://ztnr.rtve.es/ztnr/1694255.m3u8
+#EXTINF:-1 tvg-id="DWEspanol.mx(m3u4u)" tvg-name="E | DW LATINO" group-title="ENTRETENIMIENTO"  tvg-logo="https://upload.wikimedia.org/wikipedia/commons/8/8e/DW_%28TV%29_Logo_2012.png",E | DW LATINO
+https://dwamdstream104.akamaized.net/hls/live/2015530/dwstream104/stream01/streamPlaylist.m3u8
+#EXTINF:-1 tvg-id="Telepacifico.co" tvg-name="CO | TELEPACIFICO [2]" group-title="[CO]"  tvg-logo="https://i.imgur.com/39hy97J.png",CO | TELEPACIFICO [2]
+https://stream.logicideas.media/telepacifico-live/smil:live.smil/playlist.m3u8
+#EXTINF:-1 tvg-id="CanalUno.co(m3u4u)" tvg-name="CO | CANAL UNO" group-title="[CO]"  tvg-logo="https://imagenes.gatotv.com/logos/canales/oscuros/1_colombia-mediano.png",CO | CANAL UNO
+https://mdstrm.com/live-stream-playlist/5a5e1c2568b1910913db5fe2.m3u8
+#EXTINF:-1 tvg-id="Canal Institucional (COL)(CITV)(138)" tvg-name="CO | CANAL INSTITUCIONAL" group-title="[CO]"  tvg-logo="https://i.imgur.com/OzxNMDM.png",CO | CANAL INSTITUCIONAL
+https://streaming.rtvc.gov.co/TV_CanalInstitucional_live/smil:live.smil/playlist.m3u8
+#EXTINF:-1 tvg-id="CanalCapital.co" tvg-name="CO | CANAL CAPITAL HD" group-title="[CO]"  tvg-logo="https://i.imgur.com/6ozsYtj.png",CO | CANAL CAPITAL HD
+https://cdns.livewave.co:19360/canalcapital/canalcapital.m3u8
+#EXTINF:-1 tvg-id="NoticiasCaracolAhora.co" tvg-name="CO | CARACOL AHORA" group-title="[CO]"  tvg-logo="https://i.imgur.com/FLt0fwa.png",CO | CARACOL AHORA
+https://co-e1-p-e-aa1.cdn.mdstrm.com/live-stream-gdai/linear/hls/pa/event/jMfhk4r5R2y5gggPm8gjtw/stream/91b1db4b-55d8-4e77-b994-3bbfbf0a21bb:CHS/master.m3u8?aid=574462d1cab0f4d50866f001&uid=AN8UDX7HiOAryhrOnE7pgmfEhWWMZN1r&sid=wf0GuugaidnInCGFZjFiSt7yWQxOTW4B&pid=slsax4Dis5DzC9ZZcg81eJqtYq7iqgwc&ref=https%3A%2F%2Fwww.caracoltv.com%2F&without_cookies=false&listenerid=&dnt=true&access_token=43Sc3FxrAuW6k6fT1JotRlsxXTKaIalmAHzGP9m4K0YyiQ4EKpmfU31OQ1W6rUQOnTDcXZL12M9&adInsertionGoogleStreamId=91b1db4b-55d8-4e77-b994-3bbfbf0a21bb%3ACHS&es=co-e1-p-e-aa1.cdn.mdstrm.com&ote=1746745261215&ot=zT4DvAzg6StrsV--vCM_0A&proto=https&pz=us
+#EXTINF:-1 tvg-id="TVPenol.co" tvg-name="CO | TV PENOL" group-title="[CO]"  tvg-logo="https://i.imgur.com/Zm4934Z.png",CO | TV PENOL
+https://stmv1.voxtvhd.com.br/tvpenol/tvpenol/playlist.m3u8
+#EXTINF:-1 tvg-id="Zoom.co" tvg-name="CO | ZOOM" group-title="[CO]"  tvg-logo="https://i.imgur.com/euy5zp6.png",CO | ZOOM
+https://canalzoom.smoothcloud.co:3027/live/canalzoombr1live.m3u8
+#EXTINF:-1 tvg-id="LitusTV.ar" tvg-name="AR | LITUS TV" group-title="[AR]"  tvg-logo="https://i.imgur.com/QIGSf4L.png",AR | LITUS TV
+https://stream.arcast.com.ar/litustv/ngrp:litustv_all/playlist.m3u8
+#EXTINF:-1 tvg-id="HiperconectadosTV.cl" tvg-name="CL | HIPERTV" group-title="CULTURAL"  tvg-logo="https://i.imgur.com/CBbbrkI.png",CL | HIPERTV
+https://stmv5.voxtvhd.com.br/hiperconectados/hiperconectados/playlist.m3u8
+#EXTINF:-1 tvg-id="RTenEspanol.ru" tvg-name="RT EN ESPAÑOL" group-title="NOTICIAS" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Russia-today-logo.svg/512px-Russia-today-logo.svg.png",RT EN ESPAÑOL 
+https://rt-esp.rttv.com/live/rtesp/playlist.m3u8`;
+
+            // Elementos de la interfaz
+            const localTab = document.getElementById('localTab');
+            const urlTab = document.getElementById('urlTab');
+            const sampleTab = document.getElementById('sampleTab');
+            const csvTab = document.getElementById('csvTab');
+            const jsonTab = document.getElementById('jsonTab');
+            const localSource = document.getElementById('localSource');
+            const urlSource = document.getElementById('urlSource');
+            const csvSource = document.getElementById('csvSource');
+            const m3uFileInput = document.getElementById('m3uFile');
+            const csvFileInput = document.getElementById('csvFile');
+            const fileName = document.getElementById('fileName');
+            const csvFileName = document.getElementById('csvFileName');
+            const fileError = document.getElementById('fileError');
+            const csvError = document.getElementById('csvError');
+            const m3uUrl = document.getElementById('m3uUrl');
+            const loadUrlBtn = document.getElementById('loadUrlBtn');
+            const urlError = document.getElementById('urlError');
+            const videoElement = document.getElementById('videoElement');
+            const playerPlaceholder = document.getElementById('playerPlaceholder');
+            const nowPlayingSection = document.getElementById('nowPlaying');
+            const nowPlayingName = document.getElementById('nowPlayingName');
+            const nowPlayingGroup = document.getElementById('nowPlayingGroup');
+            const nowPlayingLogo = document.getElementById('nowPlayingLogo');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const volumeBtn = document.getElementById('volumeBtn');
+            const volumeControl = document.getElementById('volumeControl');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const searchInput = document.getElementById('searchInput');
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
+            const channelList = document.getElementById('channelList');
+            const channelCount = document.getElementById('channelCount');
+            const categoryDropdown = document.getElementById('categoryDropdown');
+            const currentCategoryText = document.getElementById('currentCategoryText');
+            const iconSizeSelector = document.getElementById('iconSizeSelector');
+            const streamInfo = document.getElementById('streamInfo');
+            const streamFormat = document.getElementById('streamFormat');
+            const streamProtocol = document.getElementById('streamProtocol');
+            const streamStatus = document.getElementById('streamStatus');
+            const streamResolution = document.getElementById('streamResolution');
+            const streamUrl = document.getElementById('streamUrl');
+            const streamDuration = document.getElementById('streamDuration');
+            const currentTime = document.getElementById('currentTime');
+            const totalTime = document.getElementById('totalTime');
+            const progressFill = document.getElementById('progressFill');
+            const toastContainer = document.getElementById('toastContainer');
+            const copyUrlBtn = document.getElementById('copyUrlBtn');
+            
+            // Variables de estado
+            let hls = null;
+            let currentChannel = null;
+            let channels = [];
+            let groupedChannels = {};
+            let currentCategory = null;
+            let iconSize = 'medium'; // Tamaño de icono por defecto
+            let durationInterval = null;
+            
+            // Configurar eventos de las pestañas
+            localTab.addEventListener('click', () => switchTab('local'));
+            urlTab.addEventListener('click', () => switchTab('url'));
+            sampleTab.addEventListener('click', () => {
+                switchTab('sample');
+                loadM3UContent(sampleM3U);
+                showToast('Lista de ejemplo cargada', 'success');
+            });
+            csvTab.addEventListener('click', () => switchTab('csv'));
+            jsonTab.addEventListener('click', () => {
+                switchTab('json');
+                loadJsonList();
+            });
+            
+            // Función para cargar lista JSON
+            function loadJsonList() {
+                const jsonUrl = 'http://yoxuqyyi.lucusvirtual.es/ls/tvip.json';
+                loadingIndicator.classList.remove('hidden');
+                
+                // Usamos un proxy CORS para evitar problemas de CORS
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(jsonUrl)}`;
+                
+                fetch(proxyUrl)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Error al cargar la lista JSON');
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Parsear el contenido JSON desde la respuesta del proxy
+                        const jsonData = JSON.parse(data.contents);
+                        
+                        // Convertir JSON a formato de canales
+                        const jsonChannels = jsonData.map(item => ({
+                            name: item.CANAL || 'Sin nombre',
+                            logo: item.ICONO || '',
+                            group: item.GRUPO || 'Sin categoría',
+                            url: item.URL || ''
+                        }));
+                        
+                        channels = jsonChannels;
+                        groupedChannels = groupChannelsByCategory(channels);
+                        displayCategories(Object.keys(groupedChannels));
+                        channelCount.textContent = `${channels.length} canales cargados`;
+                        showToast('Lista General cargada correctamente', 'success');
+                    })
+                    .catch(error => {
+                        showToast('Error al cargar la Lista General', 'error');
+                        console.error('Error:', error);
+                    })
+                    .finally(() => {
+                        loadingIndicator.classList.add('hidden');
+                    });
+            }
+            
+            // Función para cambiar entre pestañas
+            function switchTab(tab) {
+                // Remover clase active de todas las pestañas
+                localTab.classList.remove('active');
+                urlTab.classList.remove('active');
+                sampleTab.classList.remove('active');
+                csvTab.classList.remove('active');
+                jsonTab.classList.remove('active');
+                
+                // Ocultar todos los paneles de fuente
+                localSource.classList.add('hidden');
+                urlSource.classList.add('hidden');
+                csvSource.classList.add('hidden');
+                
+                // Activar la pestaña seleccionada
+                if (tab === 'local') {
+                    localTab.classList.add('active');
+                    localSource.classList.remove('hidden');
+                } else if (tab === 'url') {
+                    urlTab.classList.add('active');
+                    urlSource.classList.remove('hidden');
+                } else if (tab === 'sample') {
+                    sampleTab.classList.add('active');
+                } else if (tab === 'csv') {
+                    csvTab.classList.add('active');
+                    csvSource.classList.remove('hidden');
+                } else if (tab === 'json') {
+                    jsonTab.classList.add('active');
+                }
+            }
+            
+            // Configurar evento cuando se selecciona un archivo M3U
+            m3uFileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    const file = this.files[0];
+                    fileName.textContent = file.name;
+                    fileError.classList.add('hidden');
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            loadM3UContent(e.target.result);
+                            showToast('Archivo M3U cargado correctamente', 'success');
+                        } catch (error) {
+                            showToast('Error al procesar el archivo M3U', 'error');
+                            fileError.textContent = error.message;
+                            fileError.classList.remove('hidden');
+                        }
+                    };
+                    reader.onerror = function() {
+                        showToast('Error al leer el archivo', 'error');
+                        fileError.textContent = 'Error al leer el archivo';
+                        fileError.classList.remove('hidden');
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            
+            // Configurar evento cuando se selecciona un archivo CSV
+            csvFileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    const file = this.files[0];
+                    csvFileName.textContent = file.name;
+                    csvError.classList.add('hidden');
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            loadCSVContent(e.target.result);
+                            showToast('Archivo CSV cargado correctamente', 'success');
+                        } catch (error) {
+                            showToast('Error al procesar el archivo CSV', 'error');
+                            csvError.textContent = error.message;
+                            csvError.classList.remove('hidden');
+                        }
+                    };
+                    reader.onerror = function() {
+                        showToast('Error al leer el archivo CSV', 'error');
+                        csvError.textContent = 'Error al leer el archivo';
+                        csvError.classList.remove('hidden');
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            
+            // Configurar evento para cargar desde URL
+            loadUrlBtn.addEventListener('click', function() {
+                const url = m3uUrl.value.trim();
+                if (!url) {
+                    showToast('Ingresa una URL válida', 'error');
+                    urlError.textContent = 'Por favor ingresa una URL válida';
+                    urlError.classList.remove('hidden');
+                    return;
+                }
+                
+                urlError.classList.add('hidden');
+                loadingIndicator.classList.remove('hidden');
+                
+                // Usamos un proxy CORS para evitar problemas de CORS
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+                
+                fetch(proxyUrl)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Error al cargar la lista');
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.contents) {
+                            loadM3UContent(data.contents);
+                            showToast('Lista cargada desde URL', 'success');
+                        } else {
+                            throw new Error('No se pudo obtener el contenido de la URL');
+                        }
+                    })
+                    .catch(error => {
+                        showToast('Error al cargar la URL', 'error');
+                        urlError.textContent = error.message;
+                        urlError.classList.remove('hidden');
+                    })
+                    .finally(() => {
+                        loadingIndicator.classList.add('hidden');
+                    });
+            });
+            
+            // Configurar selector de tamaño de iconos
+            iconSizeSelector.addEventListener('change', function() {
+                iconSize = this.value;
+                updateChannelDisplay();
+            });
+            
+            // Configurar botón para copiar URL
+            copyUrlBtn.addEventListener('click', function() {
+                if (streamUrl.textContent && streamUrl.textContent !== '-') {
+                    navigator.clipboard.writeText(streamUrl.textContent)
+                        .then(() => {
+                            const btn = this;
+                            btn.innerHTML = '<i class="fas fa-check"></i>';
+                            btn.classList.add('copied');
+                            showToast('URL copiada al portapapeles', 'success');
+                            
+                            setTimeout(() => {
+                                btn.innerHTML = '<i class="fas fa-copy"></i>';
+                                btn.classList.remove('copied');
+                            }, 2000);
+                        })
+                        .catch(err => {
+                            showToast('Error al copiar la URL', 'error');
+                            console.error('Error al copiar: ', err);
+                        });
+                }
+            });
+            
+            // Función para mostrar notificaciones toast
+            function showToast(message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                
+                let icon = 'fa-info-circle';
+                if (type === 'error') icon = 'fa-exclamation-circle';
+                if (type === 'success') icon = 'fa-check-circle';
+                if (type === 'warning') icon = 'fa-exclamation-triangle';
+                
+                toast.innerHTML = `<i class="fas ${icon}"></i> ${message}`;
+                toastContainer.appendChild(toast);
+                
+                // Mostrar toast
+                setTimeout(() => {
+                    toast.classList.add('show');
+                }, 10);
+                
+                // Ocultar toast después de 3 segundos
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }, 3000);
+            }
+            
+            // Función para cargar contenido M3U
+            function loadM3UContent(content) {
+                channels = parseM3U(content);
+                groupedChannels = groupChannelsByCategory(channels);
+                displayCategories(Object.keys(groupedChannels));
+                channelCount.textContent = `${channels.length} canales cargados`;
+            }
+            
+            // Función para cargar contenido CSV
+            function loadCSVContent(content) {
+                channels = parseCSV(content);
+                groupedChannels = groupChannelsByCategory(channels);
+                displayCategories(Object.keys(groupedChannels));
+                channelCount.textContent = `${channels.length} canales cargados`;
+            }
+            
+            // Función para parsear CSV
+            function parseCSV(content) {
+                const lines = content.split('\n');
+                const channels = [];
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line || line.startsWith('#')) continue;
+                    
+                    // Manejar comas dentro de campos entre comillas
+                    const fields = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                    
+                    if (fields && fields.length >= 5) {
+                        // Eliminar comillas si existen
+                        const cleanFields = fields.map(field => 
+                            field.startsWith('"') && field.endsWith('"') ? 
+                            field.substring(1, field.length - 1) : field
+                        );
+                        
+                        const channel = {
+                            name: cleanFields[0] || 'Sin nombre',
+                            logo: cleanFields[1] || '',
+                            group: cleanFields[2] || 'Sin categoría',
+                            id: cleanFields[3] || '',
+                            url: cleanFields[4] || ''
+                        };
+                        
+                        if (channel.url) {
+                            channels.push(channel);
+                        }
+                    }
+                }
+                
+                return channels;
+            }
+            
+            // Configurar evento para buscar canales
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                const channelItems = document.querySelectorAll('.channel-item');
+                let visibleCount = 0;
+                
+                channelItems.forEach(item => {
+                    const channelName = item.querySelector('.channel-name').textContent.toLowerCase();
+                    if (channelName.includes(searchTerm)) {
+                        item.classList.remove('hidden');
+                        visibleCount++;
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+                
+                // Actualizar contador de canales visibles
+                channelCount.textContent = `${visibleCount} de ${groupedChannels[currentCategory]?.length || 0} canales`;
+            });
+            
+            // Configurar evento para limpiar búsqueda
+            clearSearchBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                const channelItems = document.querySelectorAll('.channel-item');
+                channelItems.forEach(item => item.classList.remove('hidden'));
+                if (currentCategory) {
+                    channelCount.textContent = `${groupedChannels[currentCategory]?.length || 0} canales`;
+                } else {
+                    channelCount.textContent = `${channels.length} canales cargados`;
+                }
+            });
+            
+            // Configurar botón play/pause
+            playPauseBtn.addEventListener('click', function() {
+                if (videoElement.paused) {
+                    videoElement.play();
+                    playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                } else {
+                    videoElement.pause();
+                    playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                }
+            });
+            
+            // Configurar botón stop
+            stopBtn.addEventListener('click', function() {
+                stopPlayer();
+            });
+            
+            // Configurar botón pantalla completa
+            fullscreenBtn.addEventListener('click', function() {
+                if (videoElement.requestFullscreen) {
+                    videoElement.requestFullscreen();
+                } else if (videoElement.webkitRequestFullscreen) {
+                    videoElement.webkitRequestFullscreen();
+                } else if (videoElement.msRequestFullscreen) {
+                    videoElement.msRequestFullscreen();
+                }
+            });
+            
+            // Configurar control de volumen
+            volumeBtn.addEventListener('click', function() {
+                videoElement.muted = !videoElement.muted;
+                volumeBtn.innerHTML = videoElement.muted ? 
+                    '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+            });
+            
+            volumeControl.addEventListener('input', function() {
+                videoElement.volume = this.value;
+                if (this.value == 0) {
+                    volumeBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+                } else {
+                    volumeBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                }
+            });
+            
+            // Función para reproducir un canal
+            function playChannel(channel) {
+                currentChannel = channel;
+                
+                // Actualizar la interfaz
+                playerPlaceholder.classList.add('hidden');
+                videoElement.classList.remove('hidden');
+                nowPlayingSection.classList.remove('hidden');
+                streamInfo.classList.remove('hidden');
+                nowPlayingName.textContent = channel.name;
+                nowPlayingGroup.textContent = channel.group;
+                nowPlayingLogo.src = channel.logo || 'https://cdn.vectorstock.com/i/1000x1000/61/05/iptv-icon-ip-tv-video-channel-box-concept-vector-30766105.webp';
+                nowPlayingLogo.onerror = function() {
+                    this.src = 'https://cdn.vectorstock.com/i/1000x1000/61/05/iptv-icon-ip-tv-video-channel-box-concept-vector-30766105.webp';
+                };
+                
+                // Mostrar URL del canal
+                streamUrl.textContent = channel.url;
+                
+                // Mostrar indicador de carga
+                loadingIndicator.classList.remove('hidden');
+                
+                // Detener cualquier reproducción anterior
+                if (hls) {
+                    hls.destroy();
+                }
+                
+                // Limpiar intervalo de duración si existe
+                if (durationInterval) {
+                    clearInterval(durationInterval);
+                }
+                
+                videoElement.pause();
+                videoElement.src = '';
+                
+                // Detectar formato y protocolo del stream
+                const format = detectFormat(channel.url);
+                const protocol = detectProtocol(channel.url);
+                
+                streamFormat.textContent = format;
+                streamProtocol.textContent = protocol;
+                streamStatus.textContent = 'Cargando...';
+                streamResolution.textContent = '-';
+                
+                // Verificar si se necesita HLS.js
+                if (format === 'HLS') {
+                    if (Hls.isSupported()) {
+                        hls = new Hls();
+                        hls.loadSource(channel.url);
+                        hls.attachMedia(videoElement);
+                        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                            videoElement.play();
+                            playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                            loadingIndicator.classList.add('hidden');
+                            streamStatus.textContent = 'Reproduciendo';
+                            
+                            // Obtener información de resolución
+                            const levels = hls.levels;
+                            if (levels && levels.length > 0) {
+                                const level = levels[hls.currentLevel];
+                                if (level) {
+                                    streamResolution.textContent = `${level.width}x${level.height}`;
+                                }
+                            }
+                            
+                            // Iniciar actualización de tiempo
+                            startDurationTracking();
+                        });
+                        hls.on(Hls.Events.ERROR, function(event, data) {
+                            console.error('Error HLS:', data);
+                            streamStatus.textContent = 'Error';
+                            if (data.fatal) {
+                                switch(data.type) {
+                                    case Hls.ErrorTypes.NETWORK_ERROR:
+                                        showToast('Error de red. Intenta nuevamente.', 'error');
+                                        break;
+                                    case Hls.ErrorTypes.MEDIA_ERROR:
+                                        showToast('Error de medio. Intenta con otro canal.', 'error');
+                                        break;
+                                    default:
+                                        showToast('Error al reproducir el canal.', 'error');
+                                }
+                                loadingIndicator.classList.add('hidden');
+                            }
+                        });
+                    } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                        // Soporte nativo de HLS (Safari)
+                        videoElement.src = channel.url;
+                        videoElement.addEventListener('loadedmetadata', function() {
+                            videoElement.play();
+                            playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                            loadingIndicator.classList.add('hidden');
+                            streamStatus.textContent = 'Reproduciendo';
+                            
+                            // Para HLS nativo, no podemos obtener fácilmente la resolución
+                            streamResolution.textContent = `${videoElement.videoWidth}x${videoElement.videoHeight}`;
+                            
+                            // Iniciar actualización de tiempo
+                            startDurationTracking();
+                        });
+                    } else {
+                        showToast('Tu navegador no soporta la reproducción de HLS.', 'error');
+                        loadingIndicator.classList.add('hidden');
+                        streamStatus.textContent = 'No soportado';
+                    }
+                } else {
+                    // Reproducción directa para MP4, AVI, etc.
+                    videoElement.src = channel.url;
+                    videoElement.addEventListener('loadedmetadata', function() {
+                        videoElement.play();
+                        playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                        loadingIndicator.classList.add('hidden');
+                        streamStatus.textContent = 'Reproduciendo';
+                        streamResolution.textContent = `${videoElement.videoWidth}x${videoElement.videoHeight}`;
+                        
+                        // Iniciar actualización de tiempo
+                        startDurationTracking();
+                    });
+                }
+                
+                // Manejar errores
+                videoElement.addEventListener('error', function() {
+                    loadingIndicator.classList.add('hidden');
+                    streamStatus.textContent = 'Error';
+                    showToast('Error al reproducir el canal. Intenta con otro.', 'error');
+                });
+            }
+            
+            // Función para iniciar el seguimiento del tiempo de reproducción
+            function startDurationTracking() {
+                // Limpiar intervalo anterior si existe
+                if (durationInterval) {
+                    clearInterval(durationInterval);
+                }
+                
+                // Actualizar tiempo total
+                const updateTotalTime = () => {
+                    if (videoElement.duration) {
+                        totalTime.textContent = formatTime(videoElement.duration);
+                    }
+                };
+                
+                // Actualizar tiempo actual y progreso
+                const updateCurrentTime = () => {
+                    if (!isNaN(videoElement.duration)) {
+                        const current = videoElement.currentTime;
+                        const duration = videoElement.duration;
+                        const percent = (current / duration) * 100;
+                        
+                        currentTime.textContent = formatTime(current);
+                        progressFill.style.width = `${percent}%`;
+                        
+                        // Calcular tiempo transcurrido
+                        const elapsed = new Date().getTime() - startTime;
+                        streamDuration.textContent = formatTime(elapsed / 1000);
+                    }
+                };
+                
+                let startTime = new Date().getTime();
+                
+                // Actualizar inmediatamente
+                updateTotalTime();
+                updateCurrentTime();
+                
+                // Configurar intervalo para actualizar cada segundo
+                durationInterval = setInterval(() => {
+                    updateCurrentTime();
+                }, 1000);
+                
+                // Actualizar cuando cambia la duración (puede cambiar en streams en vivo)
+                videoElement.addEventListener('durationchange', updateTotalTime);
+            }
+            
+            // Función para formatear tiempo (segundos a HH:MM:SS)
+            function formatTime(seconds) {
+                const date = new Date(0);
+                date.setSeconds(seconds);
+                return date.toISOString().substr(11, 8);
+            }
+            
+            // Función para detectar formato de video desde URL
+            function detectFormat(url) {
+                if (url.includes('.m3u8')) return 'HLS';
+                if (url.includes('.mp4')) return 'MP4';
+                if (url.includes('.avi')) return 'AVI';
+                if (url.includes('.mkv')) return 'MKV';
+                if (url.includes('.flv')) return 'FLV';
+                if (url.includes('.mov')) return 'MOV';
+                return 'Desconocido';
+            }
+            
+            // Función para detectar protocolo desde URL
+            function detectProtocol(url) {
+                if (url.startsWith('http://')) return 'HTTP';
+                if (url.startsWith('https://')) return 'HTTPS';
+                if (url.startsWith('rtmp://')) return 'RTMP';
+                if (url.startsWith('rtsp://')) return 'RTSP';
+                if (url.startsWith('udp://')) return 'UDP';
+                return 'Desconocido';
+            }
+            
+            // Función para detener el reproductor
+            function stopPlayer() {
+                if (hls) {
+                    hls.destroy();
+                    hls = null;
+                }
+                
+                // Limpiar intervalo de duración
+                if (durationInterval) {
+                    clearInterval(durationInterval);
+                    durationInterval = null;
+                }
+                
+                videoElement.pause();
+                videoElement.src = '';
+                videoElement.classList.add('hidden');
+                playerPlaceholder.classList.remove('hidden');
+                nowPlayingSection.classList.add('hidden');
+                streamInfo.classList.add('hidden');
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                
+                // Resetear información de tiempo
+                currentTime.textContent = '00:00:00';
+                totalTime.textContent = '00:00:00';
+                progressFill.style.width = '0%';
+                streamDuration.textContent = '00:00:00';
+            }
+            
+            // Función para parsear contenido M3U
+            function parseM3U(content) {
+                const lines = content.split('\n');
+                const channels = [];
+                let currentChannel = {};
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    
+                    if (line.startsWith('#EXTINF:')) {
+                        // Parsear línea EXTINF
+                        const parts = line.split(',');
+                        const infoPart = parts[0];
+                        const namePart = parts.length > 1 ? parts[1] : '';
+                        
+                        // Extraer atributos
+                        const attrs = {};
+                        const attrMatches = infoPart.matchAll(/(\S+?)="(.*?)"/g);
+                        for (const match of attrMatches) {
+                            attrs[match[1]] = match[2];
+                        }
+                        
+                        // Crear objeto de canal - usando tvg-name para nombre y group-title para categoría
+                        currentChannel = {
+                            name: attrs['tvg-name'] || namePart, // Preferir tvg-name, usar nombre después de la coma como alternativa
+                            group: attrs['group-title'] || 'Sin categoría',
+                            logo: attrs['tvg-logo'] || '',
+                            url: ''
+                        };
+                    } else if (line && !line.startsWith('#') && currentChannel.name) {
+                        // Esta es la línea de URL
+                        currentChannel.url = line;
+                        channels.push(currentChannel);
+                        currentChannel = {};
+                    }
+                }
+                
+                return channels;
+            }
+            
+            // Función para agrupar canales por categoría
+            function groupChannelsByCategory(channels) {
+                const groups = {};
+                
+                channels.forEach(channel => {
+                    if (!groups[channel.group]) {
+                        groups[channel.group] = [];
+                    }
+                    groups[channel.group].push(channel);
+                });
+                
+                return groups;
+            }
+            
+            // Función para mostrar categorías en el selector desplegable
+            function displayCategories(categories) {
+                categoryDropdown.innerHTML = '';
+                
+                if (categories.length === 0) {
+                    categoryDropdown.innerHTML = `
+                        <a class="text-gray-500">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            No se encontraron categorías
+                        </a>
+                    `;
+                    return;
+                }
+                
+                // Ordenar categorías alfabéticamente
+                categories.sort();
+                
+                categories.forEach(category => {
+                    const categoryItem = document.createElement('a');
+                    categoryItem.href = '#';
+                    categoryItem.textContent = category;
+                    categoryItem.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        selectCategory(category);
+                        currentCategoryText.textContent = category;
+                    });
+                    
+                    categoryDropdown.appendChild(categoryItem);
+                });
+                
+                // Seleccionar primera categoría por defecto
+                if (categories.length > 0) {
+                    selectCategory(categories[0]);
+                    currentCategoryText.textContent = categories[0];
+                }
+            }
+            
+            // Función para seleccionar una categoría y mostrar sus canales
+            function selectCategory(category) {
+                currentCategory = category;
+                updateChannelDisplay();
+            }
+            
+            // Función para actualizar la visualización de canales según categoría y tamaño de icono
+            function updateChannelDisplay() {
+                if (!currentCategory || !groupedChannels[currentCategory]) {
+                    channelList.innerHTML = `
+                        <div class="text-center text-gray-500 py-10">
+                            <i class="fas fa-tv text-4xl mb-2"></i>
+                            <p>Selecciona una categoría</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const channels = groupedChannels[currentCategory];
+                channelList.innerHTML = '';
+                channelCount.textContent = `${channels.length} canales`;
+                
+                // Crear contenedor grid con clase apropiada según tamaño de icono
+                const gridContainer = document.createElement('div');
+                gridContainer.className = `grid gap-4 ${getGridClass()}`;
+                
+                // Ordenar canales alfabéticamente
+                channels.sort((a, b) => a.name.localeCompare(b.name));
+                
+                channels.forEach(channel => {
+                    const channelItem = document.createElement('div');
+                    channelItem.className = 'channel-item bg-gray-700 rounded-lg p-3 cursor-pointer hover:bg-gray-600';
+                    channelItem.addEventListener('click', () => playChannel(channel));
+                    
+                    const channelLogo = document.createElement('img');
+                    channelLogo.src = channel.logo || 'https://cdn.vectorstock.com/i/1000x1000/61/05/iptv-icon-ip-tv-video-channel-box-concept-vector-30766105.webp';
+                    channelLogo.alt = channel.name;
+                    channelLogo.className = `w-full ${getIconSizeClass()} object-contain mb-2 rounded`;
+                    channelLogo.onerror = function() {
+                        this.src = 'https://cdn.vectorstock.com/i/1000x1000/61/05/iptv-icon-ip-tv-video-channel-box-concept-vector-30766105.webp';
+                    };
+                    
+                    const channelName = document.createElement('div');
+                    channelName.className = 'channel-name text-center text-sm font-medium truncate';
+                    channelName.textContent = channel.name;
+                    
+                    channelItem.appendChild(channelLogo);
+                    channelItem.appendChild(channelName);
+                    gridContainer.appendChild(channelItem);
+                });
+                
+                channelList.appendChild(gridContainer);
+            }
+            
+            // Función para obtener clase grid apropiada según tamaño de icono
+            function getGridClass() {
+                switch(iconSize) {
+                    case 'mini': return 'channel-grid-mini';                 
+                    case 'small': return 'channel-grid-small';
+                    case 'medium': return 'channel-grid-medium';
+                    case 'large': return 'channel-grid-large';
+                    default: return 'channel-grid-medium';
+                }
+            }
+            
+            // Función para obtener clase de tamaño de icono según selección
+            function getIconSizeClass() {
+                switch(iconSize) {
+                    case 'mini': return 'h-8';
+                    case 'small': return 'h-16';
+                    case 'medium': return 'h-24';
+                    case 'large': return 'h-32';
+                    default: return 'h-24';
+                }
+            }
+            
+            // Inicializar con pestaña local activa
+            switchTab('local');
+        });
+    </script>
+</body>
+</html>
