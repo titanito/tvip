@@ -246,10 +246,24 @@
         <!-- Carga desde URL -->
         <div id="urlSource" class="mb-6 p-4 bg-gray-800 rounded-lg hidden">
             <div class="flex flex-col md:flex-row gap-3">
-                <input type="text" id="m3uUrl" placeholder="https://ejemplo.com/lista.m3u" class="flex-1 p-2 rounded bg-gray-700 text-white" value="http://yoxuqyyi.lucusvirtual.es/ls/mx.m3u">
+                <input type="text" id="m3uUrl" placeholder="https://ejemplo.com/lista.m3u" class="flex-1 p-2 rounded bg-gray-700 text-white" value="http://mitvip.atwebpages.com/ls/mx.m3u">
                 <button id="loadUrlBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded whitespace-nowrap">
                     <i class="fas fa-download mr-2"></i>Cargar
                 </button>
+				<a href="https://tvip.free.nf/ls/lista.html">Abrir Listados</a>
+			    <script>
+        			function copyToClipboard(elementId) {
+                     var link = document.getElementById(elementId).textContent;
+                     navigator.clipboard.writeText(link).then(() => {
+                     alert("Enlace copiado: " + link);
+                     }).catch(err => {
+                     console.error("Error al copiar: ", err);
+                     });
+                    }
+                   function cerrarPagina() {
+                     window.open('', '_self').close();
+                    }
+                 </script>
             </div>
             <div id="urlError" class="text-red-500 mt-2 hidden"></div>
         </div>
@@ -538,7 +552,7 @@ https://rt-esp.rttv.com/live/rtesp/playlist.m3u8`;
             
             // Función para cargar lista JSON
             function loadJsonList() {
-                const jsonUrl = 'http://yoxuqyyi.lucusvirtual.es/ls/tvip.json';
+                const jsonUrl = 'http://mitvip.atwebpages.com/ls/tvip.json';
                 loadingIndicator.classList.remove('hidden');
                 
                 // Usamos un proxy CORS para evitar problemas de CORS
